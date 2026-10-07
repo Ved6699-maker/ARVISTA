@@ -2,6 +2,8 @@ const state = {
   stream: null,
   facingMode: "environment",
   model: null,
+  detecting: false,
+  lastDetectionAt: 0,
   running: false,
   frozen: false,
   lastDetection: null,
@@ -62,7 +64,7 @@ function toast(message){
 async function loadModel(){
   setStatus("Loading AI");
   try{
-    state.model = await cocoSsd.load({base:"lite_mobilenet_v2"});
+    state.model = await cocoSsd.load({base:"mobilenet_v2"});
     setStatus("AI Ready", true);
   }catch(err){
     console.error(err);
@@ -125,17 +127,40 @@ function showError(message){
 
 async function detectLoop(){
   if(!state.running) return;
-  if(!state.frozen && state.model && camera.readyState >= 2){
+
+  if(!state.frozen && !state.detecting && state.model && camera.readyState >= 2 && camera.videoWidth){
+    state.detecting = true;
     try{
-      const predictions = await state.model.detect(camera, 12, 0.45);
+      const predictions = await state.model.detect(camera, 15, 0.30);
+
+      // Prefer confident, reasonably large objects in the camera view.
       const best = predictions
-        .filter(p => p.score >= 0.52)
-        .sort((a,b)=>b.score-a.score)[0] || null;
-      state.lastDetection = best;
-      updateDetectionCard(best);
-    }catch(err){ console.warn("Detection error", err); }
+        .filter(p => p.score >= 0.34)
+        .map(p => ({
+          ...p,
+          priority: p.score + Math.min(
+            (p.bbox[2] * p.bbox[3]) / (camera.videoWidth * camera.videoHeight),
+            0.25
+          )
+        }))
+        .sort((a,b) => b.priority - a.priority)[0] || null;
+
+      if(best){
+        state.lastDetection = best;
+        state.lastDetectionAt = performance.now();
+        updateDetectionCard(best);
+      } else if(performance.now() - state.lastDetectionAt > 900){
+        state.lastDetection = null;
+        updateDetectionCard(null);
+      }
+    }catch(err){
+      console.warn("Detection error", err);
+    }finally{
+      state.detecting = false;
+    }
   }
-  setTimeout(detectLoop, 250);
+
+  setTimeout(detectLoop, 140);
 }
 
 function updateDetectionCard(pred){
@@ -151,10 +176,23 @@ function updateDetectionCard(pred){
 
 function boxFor(pred){
   const r = camera.getBoundingClientRect();
-  const sx = r.width / camera.videoWidth;
-  const sy = r.height / camera.videoHeight;
-  // Video and canvas are mirrored visually. Convert the model's x coordinate.
-  return {x:r.width-(pred.bbox[0]+pred.bbox[2])*sx,y:pred.bbox[1]*sy,w:pred.bbox[2]*sx,h:pred.bbox[3]*sy};
+  const vw = camera.videoWidth;
+  const vh = camera.videoHeight;
+  if(!vw || !vh) return {x:0,y:0,w:0,h:0};
+
+  // Account for object-fit: cover cropping so the overlay stays aligned.
+  const scale = Math.max(r.width / vw, r.height / vh);
+  const renderedW = vw * scale;
+  const renderedH = vh * scale;
+  const offsetX = (r.width - renderedW) / 2;
+  const offsetY = (r.height - renderedH) / 2;
+
+  return {
+    x: pred.bbox[0] * scale + offsetX,
+    y: pred.bbox[1] * scale + offsetY,
+    w: pred.bbox[2] * scale,
+    h: pred.bbox[3] * scale
+  };
 }
 
 function animate(){
@@ -162,15 +200,11 @@ function animate(){
   state.animationTime += 0.035;
   const r = camera.getBoundingClientRect();
   ctx.clearRect(0,0,r.width,r.height);
-  if(state.lastDetection && !state.frozen){
+  if(state.lastDetection){
     const box = boxFor(state.lastDetection);
     const key = normalizeName(state.lastDetection.class);
     const effect = effects[key] || {color:"#62f3db",kind:"rings"};
     drawEffect(box,effect);
-  } else if(state.lastDetection && state.frozen){
-    const box = boxFor(state.lastDetection);
-    const key = normalizeName(state.lastDetection.class);
-    drawEffect(box,effects[key] || {color:"#62f3db",kind:"rings"});
   }
   requestAnimationFrame(animate);
 }
