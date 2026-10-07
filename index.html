@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#07111f">
+  <meta name="description" content="ARVISTA - scan real-world objects and bring them to life with animated augmented-reality effects.">
+  <title>ARVISTA — AR Object Animator</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="ARVISTA home">
+        <span class="brand-mark" aria-hidden="true">
+          <span></span><span></span><span></span>
+        </span>
+        <span>
+          <strong>ARVISTA</strong>
+          <small>OBJECT ANIMATOR</small>
+        </span>
+      </a>
+      <button id="helpBtn" class="icon-btn" aria-label="How it works">?</button>
+    </header>
+
+    <main>
+      <section id="homeScreen" class="screen active">
+        <div class="hero">
+          <div class="orb orb-a"></div>
+          <div class="orb orb-b"></div>
+          <div class="hero-badge">WEBAR • AI VISION • GITHUB PAGES</div>
+          <h1>Turn everyday objects<br><span>into living experiences.</span></h1>
+          <p>Point your camera at a supported object and ARVISTA will identify it and place an animated effect around it.</p>
+          <button id="startBtn" class="primary-btn">
+            <span>◎</span> START SCANNING
+          </button>
+          <div class="supported-row">
+            <span>Try:</span>
+            <b>🍎 Apple</b><b>📱 Phone</b><b>📚 Book</b><b>🧴 Bottle</b>
+          </div>
+        </div>
+        <div class="feature-grid">
+          <article><div class="feature-icon">⌁</div><h3>Live Camera</h3><p>Uses your phone or laptop camera directly in the browser.</p></article>
+          <article><div class="feature-icon">✦</div><h3>AI Detection</h3><p>Recognizes common objects using an in-browser vision model.</p></article>
+          <article><div class="feature-icon">◈</div><h3>Animated AR</h3><p>Adds a different visual experience for each detected object.</p></article>
+        </div>
+      </section>
+
+      <section id="scannerScreen" class="screen scanner-screen">
+        <div class="camera-wrap">
+          <video id="camera" autoplay muted playsinline></video>
+          <canvas id="overlay"></canvas>
+          <div class="scan-ui">
+            <div class="scan-top">
+              <span id="statusPill" class="status-pill"><i></i> Loading AI</span>
+              <button id="switchCameraBtn" class="glass-btn">↻ Camera</button>
+            </div>
+            <div class="reticle" aria-hidden="true">
+              <i class="c1"></i><i class="c2"></i><i class="c3"></i><i class="c4"></i>
+              <span>SCAN OBJECT</span>
+            </div>
+            <div class="scan-bottom">
+              <div id="detectionCard" class="detection-card hidden">
+                <div class="det-icon" id="detIcon">✦</div>
+                <div class="det-copy">
+                  <small>DETECTED</small>
+                  <strong id="detectedName">Waiting…</strong>
+                </div>
+                <button id="effectBtn" class="mini-btn">Effect</button>
+              </div>
+              <div class="bottom-actions">
+                <button id="stopBtn" class="round-btn" aria-label="Stop scanning">×</button>
+                <button id="freezeBtn" class="capture-btn" aria-label="Freeze current AR view">◉</button>
+                <button id="infoBtn" class="round-btn" aria-label="Information">i</button>
+              </div>
+            </div>
+          </div>
+          <div id="toast" class="toast"></div>
+        </div>
+      </section>
+    </main>
+
+    <div id="helpModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+      <div class="modal-card">
+        <button id="closeHelp" class="close-btn" aria-label="Close">×</button>
+        <div class="modal-icon">✦</div>
+        <h2 id="helpTitle">How ARVISTA works</h2>
+        <ol>
+          <li>Allow camera access.</li>
+          <li>Point the camera at a common object.</li>
+          <li>The AI model checks the live video for recognizable objects.</li>
+          <li>ARVISTA draws an animated effect around the detected object.</li>
+        </ol>
+        <p class="note">This first version uses browser-based object detection. It is a visual AR prototype rather than true world-anchored AR, so the effect follows the detected bounding box.</p>
+      </div>
+    </div>
+
+    <div id="errorModal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-card">
+        <div class="modal-icon danger">!</div>
+        <h2>Camera unavailable</h2>
+        <p id="errorText">Please allow camera access and open this site over HTTPS (GitHub Pages provides HTTPS).</p>
+        <button id="errorClose" class="primary-btn">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
