@@ -75,28 +75,55 @@ async function loadModel(){
 
 async function startCamera(){
   if(state.stream) stopCamera(false);
+
   if(!navigator.mediaDevices?.getUserMedia){
-    showError("Camera access is not supported by this browser. Try the latest Chrome or Safari.");
+    showError("Camera access is not supported by this browser. Please use HTTPS and a current Chrome, Safari, or Firefox.");
     return;
   }
+
+  // Camera errors and AI-model errors are handled separately.
+  // The previous version reported an AI loading failure as "Camera unavailable".
   try{
     state.stream = await navigator.mediaDevices.getUserMedia({
-      video:{facingMode:state.facingMode,width:{ideal:1280},height:{ideal:720}},
+      video:{
+        facingMode:{ideal:state.facingMode},
+        width:{ideal:1920},
+        height:{ideal:1080},
+        frameRate:{ideal:30,max:30}
+      },
       audio:false
     });
+
     camera.srcObject = state.stream;
     await camera.play();
     resizeCanvas();
     state.running = true;
     state.frozen = false;
     setScreen("scanner");
-    if(!state.model) await loadModel();
-    detectLoop();
-    animate();
   }catch(err){
-    console.error(err);
-    showError("Camera permission was denied or the camera is already being used by another app. On GitHub Pages, make sure you allow camera access.");
+    console.error("Camera error:", err);
+    const reason = err?.name === "NotAllowedError"
+      ? "Camera permission is blocked. Allow camera access for this site in your browser settings, then reload."
+      : err?.name === "NotReadableError"
+      ? "The camera is busy or unavailable. Close other apps using the camera and try again."
+      : "The browser could not start the camera. Check camera permissions and make sure you are using HTTPS.";
+    showError(reason);
+    return;
   }
+
+  if(!state.model){
+    try{
+      await loadModel();
+    }catch(err){
+      console.error("AI model error:", err);
+      setStatus("AI unavailable");
+      showError("The camera is working, but the AI model could not be downloaded. Check your internet connection or browser shields, then reload the page.");
+      return;
+    }
+  }
+
+  detectLoop();
+  animate();
 }
 
 function stopCamera(showHome=true){
